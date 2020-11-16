@@ -1,6 +1,10 @@
 from game_board import GameBoard
-from ai import AI
+from expectimax import Expectimax
 from random import randint, seed
+import time
+from helpers import print_board
+
+DELAY = 1000 / 1000
 
 dirs = {
     0: "UP",
@@ -12,10 +16,10 @@ dirs = {
 class CLIRunner:
     def __init__(self):
         self.board = GameBoard()
-        self.ai = AI()
+        self.ai = Expectimax()
 
         self.init_game()
-        self.print_board()
+        print_board(self.board)
 
         self.run_game()
 
@@ -26,26 +30,24 @@ class CLIRunner:
         self.insert_random_tile()
 
     def run_game(self):
-        while True:
+        moves = 0
+        while True and moves < 2:
             move = self.ai.get_move(self.board)
             print("Player's Turn:", end="")
             self.board.move(move)
             print(dirs[move])
-            self.print_board()
+            print_board(self.board)
             print("Computer's Turn")
             self.insert_random_tile()
-            self.print_board()
+            print_board(self.board)
 
             if len(self.board.get_available_moves()) == 0:
                 print("GAME OVER (max tile): " + str(self.board.get_max_tile()))
                 break
 
-    def print_board(self):
-        for i in range(4):
-            for j in range(4):
-                print("%6d  " % self.board.grid[i][j], end="")
-            print("")
-        print("")
+            moves += 1
+            if DELAY:
+                time.sleep(DELAY)
 
     def insert_random_tile(self):
         if randint(0,99) < 100 * 0.9:

@@ -1,20 +1,24 @@
-# 2048-expectimax-ai
+# 2048 AI
 
-Hello! :)
+Forked from [Lesaun](https://github.com/Lesaun/2048-expectimax-ai), who created the board and the original Expectimax algorithm. They also got the GUI from [yangshun](https://github.com/yangshun/2048-python).
 
-Some resources used:
-https://www.edx.org/micromasters/columbiax-artificial-intelligence (knowledge)
+This is a project to investigate artificial intelligence strategies to play and beat the game 2048. The algorithms that this used are both Expectimax and Monte Carlo Tree Search.
 
-https://courses.cs.washington.edu/courses/cse473/11au/slides/cse473au11-adversarial-search.pdf (more knowledge)
+## Usage
 
-https://web.uvic.ca/~maryam/AISpring94/Slides/06_ExpectimaxSearch.pdf (even more knowledge!)
+There are a few ways to run the algorithm:
 
-https://github.com/yangshun/2048-python (gui)
+```bash
+python3 main_cli.py # output board state in terminal
+python3 main_gui.py # use gui to visualize board state
+python3 main_batch.py # silent, output results in log files
+```
 
-https://stackoverflow.com/questions/22342854/what-is-the-optimal-algorithm-for-the-game-2048 (using idea of smoothness referenced here in eval function)
+You can change the algorithm used (either Expectimax or MCTS) in any of the `main` files.
 
-https://stackoverflow.com/questions/44580615/python-how-to-merge-equal-element-numpy-array (using merge with numba referenced here)
+## Resources Used
 
-https://stackoverflow.com/questions/44558215/python-justifying-numpy-array (ended up using numba for justify)
+- 2048 optimal algorithm discussion on [Stack Overflow](https://stackoverflow.com/questions/22342854/what-is-the-optimal-algorithm-for-the-game-2048)
 
-http://techieme.in/matrix-rotation/ (transpose reverse transpose transpose .. cool diagrams)
+## License
+[MIT](https://choosealicense.com/licenses/mit/)

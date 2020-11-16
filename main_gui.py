@@ -3,11 +3,12 @@ from random import randint
 import time
 
 from game_board import GameBoard
-from ai import AI
+from expectimax import Expectimax
 
 SIZE = 500
 GRID_LEN = 4
 GRID_PADDING = 10
+DELAY = 0 / 1000
 
 BACKGROUND_COLOR_GAME = "#92877d"
 BACKGROUND_COLOR_CELL_EMPTY = "#9e948a"
@@ -30,17 +31,24 @@ class GameGrid(Frame):
         self.init_grid()
         self.init_matrix()
         self.update_grid_cells()
-        self.AI = AI()
+        self.ai = Expectimax()
 
         self.run_game()
         self.mainloop()
 
     def run_game(self):
         while True:
-            self.board.move(self.AI.get_move(self.board))
+            self.board.move(self.ai.get_move(self.board))
             self.update_grid_cells()
+            
+            if DELAY:
+                time.sleep(DELAY)
+
             self.add_random_tile()
             self.update_grid_cells()
+
+            if DELAY:
+                time.sleep(DELAY)
 
             if len(self.board.get_available_moves()) == 0:
                 self.game_over_display()

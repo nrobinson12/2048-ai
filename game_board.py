@@ -1,17 +1,22 @@
 import numpy as np
 from numba import jit
+from helpers import print_board
+from pprint import pprint as pp
+from timeit import default_timer as timer
 
 dirs = [UP, DOWN, LEFT, RIGHT] = range(4)
 
+# merge left where applicable
 @jit
 def merge(a):
     for i in [0,1,2,3]:
         for j in [0,1,2]:
             if a[i][j] == a[i][j + 1] and a[i][j] != 0:
                 a[i][j] *= 2
-                a[i][j + 1] = 0   
+                a[i][j + 1] = 0
     return a
 
+# slide left, out = np.zeros((4,4))
 @jit
 def justify_left(a, out):
     for i in [0,1,2,3]:
@@ -22,6 +27,7 @@ def justify_left(a, out):
                 c += 1
     return out
 
+# find which way we can move output booleans [up, down, left, right]
 @jit
 def get_available_from_zeros(a):
     uc, dc, lc, rc = False, False, False, False
@@ -56,13 +62,16 @@ def get_available_from_zeros(a):
     return [uc, dc, lc, rc]
 
 class GameBoard:
-    def __init__(self):
-        self.grid = np.zeros((4, 4))#, dtype=np.int_)
+    def __init__(self, grid=None):
+        if grid is None:
+            self.grid = np.zeros((4, 4))
+        else:
+            self.grid = grid
 
     def clone(self):
-        grid_copy = GameBoard()
-        grid_copy.grid = np.copy(self.grid)
-        return grid_copy
+        gb_copy = GameBoard()
+        gb_copy.grid = np.copy(self.grid)
+        return gb_copy
 
     def insert_tile(self, pos, value):
         self.grid[pos[0]][pos[1]] = value
@@ -78,35 +87,33 @@ class GameBoard:
     def get_max_tile(self):
         return np.amax(self.grid)
 
+    def slide_left(self):
+        z = np.zeros((4,4))
+        self.grid = justify_left(self.grid, z)
+
+        self.grid = merge(self.grid)
+
+        z = np.zeros((4,4))
+        self.grid = justify_left(self.grid, z)
+
     def move(self, dir, get_avail_call = False):
         if get_avail_call:
             clone = self.clone()
 
-        z1 = np.zeros((4, 4))#, dtype=np.int_)
-        z2 = np.zeros((4, 4))#, dtype=np.int_)
-
         if dir == UP:
             self.grid = self.grid[:,::-1].T
-            self.grid = justify_left(self.grid, z1)
-            self.grid = merge(self.grid)
-            self.grid = justify_left(self.grid, z2)
+            self.slide_left()
             self.grid = self.grid.T[:,::-1]
         if dir == DOWN:
             self.grid = self.grid.T[:,::-1]
-            self.grid = justify_left(self.grid, z1)
-            self.grid = merge(self.grid)
-            self.grid = justify_left(self.grid, z2)
+            self.slide_left()
             self.grid = self.grid[:,::-1].T
         if dir == LEFT:
-            self.grid = justify_left(self.grid, z1)
-            self.grid = merge(self.grid)
-            self.grid = justify_left(self.grid, z2)
+            self.slide_left()
         if dir == RIGHT:
             self.grid = self.grid[:,::-1]
             self.grid = self.grid[::-1,:]
-            self.grid = justify_left(self.grid, z1)
-            self.grid = merge(self.grid)
-            self.grid = justify_left(self.grid, z2)
+            self.slide_left()
             self.grid = self.grid[:,::-1]
             self.grid = self.grid[::-1,:]
 
