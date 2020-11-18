@@ -3,7 +3,7 @@ from random import randint
 import time
 
 from game_board import GameBoard
-from expectimax import Expectimax
+from ai import Expectimax, MonteCarlo
 
 SIZE = 500
 GRID_LEN = 4
@@ -31,7 +31,7 @@ class GameGrid(Frame):
         self.init_grid()
         self.init_matrix()
         self.update_grid_cells()
-        self.ai = Expectimax()
+        self.ai = MonteCarlo()
 
         self.run_game()
         self.mainloop()

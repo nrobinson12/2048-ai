@@ -1,5 +1,5 @@
 from game_board import GameBoard
-from expectimax import Expectimax
+from ai import Expectimax, MonteCarlo
 from random import randint, seed
 import time
 from helpers import print_board

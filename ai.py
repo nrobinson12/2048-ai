@@ -1,6 +1,7 @@
 import math
 import time
 import numpy as np
+from random import randint, seed, choice
 from numba import jit
 from helpers import print_board
 
@@ -37,8 +38,59 @@ def get_smoothness(a):
                 if i+k <= 3 and a[i+k][j] != 0:
                     s += abs(a[i][j] - a[i+k][j])
     return s
-            
 
+
+def eval_board(board, n_empty):
+    # evaluate board on 4 properties:
+    # 1. max value in board
+    # 2. number of empty tiles
+    # 3. monotonicity
+    # 4. smoothness
+    # 5. snake
+
+    grid = board.grid
+
+    # weights we give to each prop
+    max_w = 1
+    empty_w = 100
+    mono_w = 10
+    smooth_w = 10
+
+    # ----- snake pattern
+    snake_w = [15,14,13,12,8,9,10,11,7,6,5,4,0,1,2,3]
+    snake_w = np.array(snake_w).reshape(4,4)
+    snake_u = np.sum(grid * snake_w)
+
+    # ----- max tile
+    max_u = np.amax(grid) * max_w
+
+    # ----- empty tiles
+    empty_u = (math.log(n_empty) * empty_w) if n_empty != 0 else 0
+
+    # ----- monotonicity
+    log_grid = np.log2(grid, where=grid != 0)   # for smoothness as well
+
+    mono_h = np.zeros((1, 4))
+    mono_v = np.zeros((1, 4))
+
+    for i in range(3):
+        mono_h += log_grid[:, i] - log_grid[:, i + 1]   # differences in horizontally adjacent
+        mono_v += log_grid[i, :] - log_grid[i + 1, :]   # differences in vertically adjacent
+
+    mono_u = (np.sum(np.abs(mono_h)) + np.sum(np.abs(mono_v))) * mono_w
+
+    # ----- smoothness
+    smooth_u = -(get_smoothness(log_grid) * smooth_w)
+
+    # ----- total
+    utility = empty_u + mono_u + smooth_u
+    utility += max_u
+    utility += snake_u
+
+    return (utility, empty_u, mono_u, smooth_u)
+
+            
+# -------------------- EXPECTIMAX -------------------- #
 class Expectimax():
     def __init__(self):
         self.states_visited = 0
@@ -77,54 +129,6 @@ class Expectimax():
 
         return (utility, empty_u, smooth_u, big_t_u)
 
-    def eval_board(self, board, n_empty):
-        # evaluate board on 4 properties:
-        # 1. max value in board
-        # 2. number of empty tiles
-        # 3. monotonicity
-        # 4. smoothness
-
-        grid = board.grid
-
-        # weights we give to each prop
-        max_w = 1
-        empty_w = 100
-        mono_w = 1
-        smooth_w = 0.1
-
-        # ----- snake pattern
-        snake_w = [15,14,13,12,8,9,10,11,7,6,5,4,0,1,2,3]
-        snake_w = np.array(snake_w).reshape(4,4)
-        snake_u = np.sum(grid * snake_w)
-
-        # ----- max tile
-        max_u = np.amax(grid) * max_w
-
-        # ----- empty tiles
-        empty_u = math.log(n_empty) * empty_w
-
-        # ----- monotonicity
-        log_grid = np.log2(grid, where=grid != 0)   # for smoothness as well
-
-        mono_h = np.zeros((1, 4))
-        mono_v = np.zeros((1, 4))
-
-        for i in range(3):
-            mono_h += log_grid[:, i] - log_grid[:, i + 1]   # differences in horizontally adjacent
-            mono_v += log_grid[i, :] - log_grid[i + 1, :]   # differences in vertically adjacent
-
-        mono_u = (np.sum(np.abs(mono_h)) + np.sum(np.abs(mono_v))) * mono_w
-
-        # ----- smoothness
-        smooth_u = -(get_smoothness(log_grid) * smooth_w)
-
-        # ----- total
-        utility = empty_u + mono_u + smooth_u
-        utility += max_u
-        utility += snake_u
-
-        return (utility, empty_u, mono_u, smooth_u)
-
 
     def maximize(self, board, depth = 0):
         moves = board.get_available_moves()
@@ -160,10 +164,10 @@ class Expectimax():
         #    return self.eval_board(board, n_empty)
 
         if n_empty >= 6 and depth >= 3:
-            return self.eval_board(board, n_empty)
+            return eval_board(board, n_empty)
 
         if n_empty >= 0 and depth >= 5:
-            return self.eval_board(board, n_empty)
+            return eval_board(board, n_empty)
 
         if n_empty == 0:
             _, utility = self.maximize(board, depth + 1)
@@ -192,3 +196,87 @@ class Expectimax():
             avg_utility[i] /= len(possible_tiles)
 
         return tuple(avg_utility)
+
+
+# -------------------- MONTE CARLO -------------------- #
+class MonteCarlo:
+    def __init__(self):
+        self.states_visited = 0
+
+    def get_move(self, board):
+        moves = board.get_available_moves()
+        num_runs = 1000
+        boards = []
+
+        runs_sum = {}
+        runs_ttl = {}
+
+        for m in moves:
+            runs_sum[m] = 0
+            runs_ttl[m] = 0
+
+        for _ in range(num_runs):
+            b = board.clone()
+            boards.append(b)
+
+        for b in boards:
+            move = choice(moves)
+
+            value = self.run_board(b, move)
+
+            runs_sum[move] += value
+            runs_ttl[move] += 1
+
+        # get best score & move
+        best_score = 0
+        best_move = None
+
+        for m, val in runs_sum.items():
+            if runs_ttl[m] != 0:
+                score = val / runs_ttl[m]
+                runs_sum[m] = score
+                
+                if score > best_score:
+                    best_score = score
+                    best_move = m
+
+        # print(runs_sum)
+        return best_move
+
+
+    def run_board(self, board, move, depth = 0):
+        board.move(move)
+        empty_cells = board.get_available_cells()
+        n_empty = len(empty_cells)
+
+
+        # base case
+        if n_empty == 0 or depth >= 3:
+            return eval_board(board, n_empty)[0]
+
+
+        # random tile generated - we are not checking probabilities anymore
+        # self.insert_random_tile(board)
+
+        # choose another random move
+        moves = board.get_available_moves()
+        if moves:
+            move = choice(moves)
+            return self.run_board(board, move, depth + 1)
+        else:
+            return eval_board(board, n_empty-1)[0]
+
+    def insert_random_tile(self, board):
+        if randint(0,99) < 100 * 0.9:
+            value = 2
+        else:
+            value = 4
+
+        cells = board.get_available_cells()
+        pos = cells[randint(0, len(cells) - 1)] if cells else None
+
+        if pos is None:
+            return None
+        else:
+            board.insert_tile(pos, value)
+            return pos

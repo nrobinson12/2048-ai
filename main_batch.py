@@ -1,11 +1,13 @@
 import numpy as np
 from game_board import GameBoard, merge, justify_left, get_available_from_zeros
-from expectimax import Expectimax, get_smoothness
+from ai import Expectimax, MonteCarlo, get_smoothness
 from game_board import GameBoard
 from random import randint
 from timeit import default_timer as timer
 from time import sleep
 from collections import Counter
+from joblib import Parallel, delayed
+from sys import argv
 
 
 DELAY = 0
@@ -93,7 +95,8 @@ class Batch:
             return pos
 
 def log_test(b):
-    with open('output.log', 'a') as f:
+    outputnum = argv[1]
+    with open('output' + outputnum + '.log', 'a') as f:
         f.write('-----\n')
         f.write('Max Tile: %d\n' % b.max_tile)
         f.write('Total Moves: %d\n' % b.total_moves)
@@ -106,9 +109,25 @@ def log_test(b):
         for tile, time in b.time_to_reach:
             f.write('%d: %f\n' % (tile, time))
 
-def main():
+def parallel_runs():
+    return (Batch(),)
+
+def run_parallel():
+    jobs = 10
+    tests = 10 / jobs
+    return Parallel(n_jobs=jobs, verbose=0)(delayed(parallel_runs)() for i in range(int(tests)))
+
+def main_parallel():
     open('output.log', 'w').close()
     open('average.log', 'w').close()
+
+    b_total = run_parallel()
+    print(b_total)
+
+def main():
+    outputnum = argv[1]
+    open('output' + outputnum + '.log', 'w').close()
+    open('average' + outputnum + '.log', 'w').close()
     tests = 0
 
     max_tile_list = []
@@ -120,7 +139,7 @@ def main():
     longest_move_sum = 0
     time_to_reach_sum = {}
 
-    while tests < 100:
+    while tests < 10:
         b = Batch()
         
         max_tile_list.append(b.max_tile)
@@ -143,7 +162,7 @@ def main():
 
     avg_max_tile = Counter(max_tile_list).most_common(1)[0][0]
 
-    with open('average.log', 'w') as f:
+    with open('average' + outputnum + '.log', 'w') as f:
         f.write('Average Max Tile: %d\n' % avg_max_tile)
         f.write('Average Total Moves: %f\n' % (total_moves_sum / tests))
         f.write('Average Total States Visited: %f\n' % (states_visited_sum / tests))
